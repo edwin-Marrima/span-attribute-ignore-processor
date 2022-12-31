@@ -15,7 +15,7 @@ const (
 )
 
 func createDefaultConfig() component.Config {
-	return Config{}
+	return &Config{}
 }
 
 func NewFactory() processor.Factory {
@@ -35,12 +35,13 @@ func createTracesProcessor(
 
 	oCfg := cfg.(*Config)
 
-	ig := NewProofreader(ctx, oCfg, set.Logger, next)
+	proofreader := NewProofreader(ctx, oCfg, set.Logger, next)
 	return processorhelper.NewTracesProcessor(
 		ctx,
 		set,
 		cfg,
 		next,
-		ig.processTraces,
+		proofreader.processTraces,
+		processorhelper.WithCapabilities(proofreader.Capabilities()),
 	)
 }

@@ -42,13 +42,24 @@ func buildIgnoreAttributes(elements []string) map[string]struct{} {
 	return ignoreAttributes
 }
 
-func (ig *proofreader) processTraces(ctx context.Context, traces ptrace.Traces) (ptrace.Traces, error) {
+func (proofr *proofreader) processTraces(ctx context.Context, traces ptrace.Traces) (ptrace.Traces, error) {
+
 	for i := 0; i < traces.ResourceSpans().Len(); i++ {
 		rs := traces.ResourceSpans().At(i)
 
+		// span-id
+		// ilss := rs.ScopeSpans()
+		// ils := ilss.At(0)
+		// spans := ils.Spans()
+		// span := spans.At(0)
+		// span.SpanID()
+		// span.SetSpanID()
+		// span.SetTraceID()
+		//
+
 		resourceAttributes := rs.Resource().Attributes()
 		resourceAttributes.RemoveIf(func(key string, v pcommon.Value) bool {
-			if _, ok := ig.ignoreAttributes[key]; ok {
+			if _, ok := proofr.ignoreAttributes[key]; ok {
 				return true
 			}
 			return false
@@ -56,4 +67,9 @@ func (ig *proofreader) processTraces(ctx context.Context, traces ptrace.Traces) 
 	}
 
 	return traces, nil
+}
+
+// Processors which modify the input data MUST set this flag to true
+func (proofr *proofreader) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{MutatesData: true}
 }
