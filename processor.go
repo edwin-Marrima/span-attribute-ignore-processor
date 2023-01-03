@@ -2,6 +2,8 @@ package spanignoreprocessor
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -18,20 +20,27 @@ type proofreader struct {
 	//type is optimized for that kind of values.
 	//list of not allowed span attribute keys
 	ignoreAttributes map[string]struct{}
-	config           *Config
+	//list of not allowed span events
+	ignoredEvents map[string]*regexp.Regexp
+	config        *Config
 	// Logger
 	logger *zap.Logger
 	// Next trace consumer in line
 	next consumer.Traces
 }
 
-func NewProofreader(ctx context.Context, config *Config, logger *zap.Logger, next consumer.Traces) *proofreader {
+func NewProofreader(ctx context.Context, config *Config, logger *zap.Logger, next consumer.Traces) (*proofreader, error) {
+	compiledRegex, err := buildRegex(config.IgnoredEvents)
+	if err != nil {
+		return nil, fmt.Errorf("error creating `proofreader` processor: %w", err)
+	}
 	return &proofreader{
 		config:           config,
 		logger:           logger,
 		next:             next,
 		ignoreAttributes: buildIgnoreAttributes(config.IgnoredAttributes.Attributes),
-	}
+		ignoredEvents:    compiledRegex,
+	}, nil
 }
 
 func buildIgnoreAttributes(elements []string) map[string]struct{} {
@@ -41,7 +50,17 @@ func buildIgnoreAttributes(elements []string) map[string]struct{} {
 	}
 	return ignoreAttributes
 }
-
+func buildRegex(expressions []string) (map[string]*regexp.Regexp, error) {
+	regex := make(map[string]*regexp.Regexp)
+	for _, expression := range expressions {
+		re, err := regexp.Compile(expression)
+		if err != nil {
+			return nil, fmt.Errorf("Error compiling regex in block list: %s", err.Error())
+		}
+		regex[expression] = re
+	}
+	return regex, nil
+}
 func (proofr *proofreader) processTraces(ctx context.Context, traces ptrace.Traces) (ptrace.Traces, error) {
 
 	for i := 0; i < traces.ResourceSpans().Len(); i++ {
@@ -56,20 +75,30 @@ func (proofr *proofreader) processTraces(ctx context.Context, traces ptrace.Trac
 		// span.SetSpanID()
 		// span.SetTraceID()
 		//
-
-		for j := 0; j < rs.ScopeSpans().Len(); j++ {
-			ils := rs.ScopeSpans().At(j)
-			for k := 0; k < ils.Spans().Len(); k++ {
-				span := ils.Spans().At(k)
-
-				spanAttrs := span.Attributes()
-				processAttributes(proofr.ignoreAttributes, spanAttrs)
-			}
-		}
 		//When IncludeResources is false resources attributes are ignored
 		if proofr.config.IgnoredAttributes.IncludeResources {
 			resourceAttributes := rs.Resource().Attributes()
 			processAttributes(proofr.ignoreAttributes, resourceAttributes)
+		}
+		for j := 0; j < rs.ScopeSpans().Len(); j++ {
+			ils := rs.ScopeSpans().At(j)
+			for k := 0; k < ils.Spans().Len(); k++ {
+				span := ils.Spans().At(k)
+				spanAttrs := span.Attributes()
+				processAttributes(proofr.ignoreAttributes, spanAttrs)
+				spanEvent := span.Events()
+				//iterate over the events in order to eliminate the events that
+				//satisfy(match) the previously provided regular expressions
+				spanEvent.RemoveIf(func(se ptrace.SpanEvent) bool {
+					for _, re := range proofr.ignoredEvents {
+						// verify if regex match event name
+						if re.MatchString(se.Name()) {
+							return true
+						}
+					}
+					return false
+				})
+			}
 		}
 
 	}
