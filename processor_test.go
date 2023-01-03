@@ -6,8 +6,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/collector/processor/processortest"
 )
 
 type testCase struct {
@@ -56,35 +58,38 @@ func sortAttributes(td ptrace.Traces) {
 	}
 }
 
-// func TestIgnoreSpans(t *testing.T) {
-// 	testCases := []struct {
-// 		test   testCase
-// 		config *Config
-// 	}{
-// 		{
-// 			test: testCase{
-// 				name:        "Remove span whose Key is listed in IgnoredAttributes property",
-// 				serviceName: "admin_service",
-// 				inputAttributes: map[string]interface{}{
-// 					"account.id":       "007",
-// 					"http.status_code": 200,
-// 					"account.password": "AKdhcjs^&xva",
-// 				},
-// 				expectedAttributes: map[string]interface{}{
-// 					"account.id":       "007",
-// 					"http.status_code": 200,
-// 				},
-// 			},
-// 			config: &Config{
-// 				IgnoredAttributes: []string{"account.password"},
-// 			},
-// 		},
-// 	}
-// 	for _, v := range testCases {
-// 		factory := NewFactory()
-// 		tp, err := factory.CreateTracesProcessor(context.Background(), processortest.NewNopCreateSettings(), v.config, consumertest.NewNop())
-// 		require.Nil(t, err)
-// 		require.NotNil(t, tp)
-// 		runIndividualTestCase(t, v.test, tp)
-// 	}
-// }
+func TestIgnoreSpans(t *testing.T) {
+	testCases := []struct {
+		test   testCase
+		config *Config
+	}{
+		{
+			test: testCase{
+				name:        "Remove span whose Key is listed in IgnoredAttributes property",
+				serviceName: "admin_service",
+				inputAttributes: map[string]interface{}{
+					"account.id":       "007",
+					"http.status_code": 200,
+					"account.password": "AKdhcjs^&xva",
+				},
+				expectedAttributes: map[string]interface{}{
+					"account.id":       "007",
+					"http.status_code": 200,
+				},
+			},
+			config: &Config{
+				IgnoredAttributes: AttributesConfiguration{
+					IncludeResources: false,
+					Attributes:       []string{"account.password"},
+				},
+			},
+		},
+	}
+	for _, v := range testCases {
+		factory := NewFactory()
+		tp, err := factory.CreateTracesProcessor(context.Background(), processortest.NewNopCreateSettings(), v.config, consumertest.NewNop())
+		require.Nil(t, err)
+		require.NotNil(t, tp)
+		runIndividualTestCase(t, v.test, tp)
+	}
+}
