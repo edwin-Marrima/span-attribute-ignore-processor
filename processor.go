@@ -61,28 +61,30 @@ func (proofr *proofreader) processTraces(ctx context.Context, traces ptrace.Trac
 			ils := rs.ScopeSpans().At(j)
 			for k := 0; k < ils.Spans().Len(); k++ {
 				span := ils.Spans().At(k)
+
 				spanAttrs := span.Attributes()
-				spanAttrs.RemoveIf(func(key string, v pcommon.Value) bool {
-					if _, ok := proofr.ignoreAttributes[key]; ok {
-						return true
-					}
-					return false
-				})
+				processAttributes(proofr.ignoreAttributes, spanAttrs)
 			}
 		}
+		//When IncludeResources is false resources attributes are ignored
+		if proofr.config.IgnoredAttributes.IncludeResources {
+			resourceAttributes := rs.Resource().Attributes()
+			processAttributes(proofr.ignoreAttributes, resourceAttributes)
+		}
 
-		// resourceAttributes := rs.Resource().Attributes()
-		// resourceAttributes.RemoveIf(func(key string, v pcommon.Value) bool {
-
-		// 	if _, ok := proofr.ignoreAttributes[key]; ok {
-
-		// 		return true
-		// 	}
-		// 	return false
-		// })
 	}
-
 	return traces, nil
+}
+
+func processAttributes(ignoreAttributes map[string]struct{}, attributes pcommon.Map) {
+	//attributes is passed by reference (pcommon.Map is a pointer), reason why this method doesn't return any value
+	attributes.RemoveIf(func(key string, v pcommon.Value) bool {
+		//attributes are removed only when the list of attributes provided in config.yaml exists in list(slice) of span or resource attributes
+		if _, ok := ignoreAttributes[key]; ok {
+			return true
+		}
+		return false
+	})
 }
 
 // Processors which modify the input data MUST set this flag to true
