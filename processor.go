@@ -61,6 +61,7 @@ func (proofr *proofreader) processTraces(ctx context.Context, traces ptrace.Trac
 			ils := rs.ScopeSpans().At(j)
 			for k := 0; k < ils.Spans().Len(); k++ {
 				span := ils.Spans().At(k)
+
 				spanAttrs := span.Attributes()
 				processAttributes(proofr.ignoreAttributes, spanAttrs)
 			}

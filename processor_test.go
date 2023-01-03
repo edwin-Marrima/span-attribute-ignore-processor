@@ -136,6 +136,37 @@ func TestIgnoreSpans(t *testing.T) {
 				},
 			},
 		},
+		{
+			test: testCase{
+				name:        "Remove span and resource attributes",
+				serviceName: "admin_service",
+				resourceInputAttributes: map[string]interface{}{
+					"service.owner.name": "alpha-team",
+					"service.owner.hash": "GfghjW$dshjkl32UYK",
+				},
+				resourceExpectedAttributes: map[string]interface{}{
+					"service.owner.name": "alpha-team",
+				},
+				spanInputAttributes: map[string]interface{}{
+					"account.id":       "007",
+					"http.status_code": 200,
+					"account.password": "AKdhcjs^&xva",
+				},
+				spanExpectedAttributes: map[string]interface{}{
+					"account.id":       "007",
+					"http.status_code": 200,
+				},
+			},
+			config: &Config{
+				IgnoredAttributes: AttributesConfiguration{
+					IncludeResources: true,
+					Attributes: []string{
+						"service.owner.hash",
+						"account.password",
+					},
+				},
+			},
+		},
 	}
 	for _, v := range testCases {
 		factory := NewFactory()
