@@ -15,7 +15,11 @@ const (
 )
 
 func createDefaultConfig() component.Config {
-	return &Config{}
+	return &Config{
+		IgnoredAttributes: AttributesConfiguration{
+			IncludeResources: true,
+		},
+	}
 }
 
 func NewFactory() processor.Factory {

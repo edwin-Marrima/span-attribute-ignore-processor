@@ -30,7 +30,7 @@ func NewProofreader(ctx context.Context, config *Config, logger *zap.Logger, nex
 		config:           config,
 		logger:           logger,
 		next:             next,
-		ignoreAttributes: buildIgnoreAttributes(config.IgnoredAttributes),
+		ignoreAttributes: buildIgnoreAttributes(config.IgnoredAttributes.Attributes),
 	}
 }
 
@@ -57,13 +57,29 @@ func (proofr *proofreader) processTraces(ctx context.Context, traces ptrace.Trac
 		// span.SetTraceID()
 		//
 
-		resourceAttributes := rs.Resource().Attributes()
-		resourceAttributes.RemoveIf(func(key string, v pcommon.Value) bool {
-			if _, ok := proofr.ignoreAttributes[key]; ok {
-				return true
+		for j := 0; j < rs.ScopeSpans().Len(); j++ {
+			ils := rs.ScopeSpans().At(j)
+			for k := 0; k < ils.Spans().Len(); k++ {
+				span := ils.Spans().At(k)
+				spanAttrs := span.Attributes()
+				spanAttrs.RemoveIf(func(key string, v pcommon.Value) bool {
+					if _, ok := proofr.ignoreAttributes[key]; ok {
+						return true
+					}
+					return false
+				})
 			}
-			return false
-		})
+		}
+
+		// resourceAttributes := rs.Resource().Attributes()
+		// resourceAttributes.RemoveIf(func(key string, v pcommon.Value) bool {
+
+		// 	if _, ok := proofr.ignoreAttributes[key]; ok {
+
+		// 		return true
+		// 	}
+		// 	return false
+		// })
 	}
 
 	return traces, nil
