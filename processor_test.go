@@ -194,7 +194,7 @@ func TestSpanEventsDeletion(t *testing.T) {
 	}{
 		{
 			test: testCase{
-				name:        "Remove span and resource attributes",
+				name:        "Delete span events based on regular expression",
 				serviceName: "admin_service",
 				spanInputAttributes: map[string]interface{}{
 					"account.id":       "007",
@@ -211,6 +211,28 @@ func TestSpanEventsDeletion(t *testing.T) {
 				IgnoredEvents: []string{
 					//regex that match jwt token
 					`([\w-]*\.[\w-]*\.[\w-]*$)`,
+				},
+			},
+		},
+		{
+			test: testCase{
+				name:        "Delete span events based on regular expression (ignore events when regex doesn't match)",
+				serviceName: "admin_service",
+				spanInputAttributes: map[string]interface{}{
+					"account.id":       "007",
+					"http.status_code": 200,
+				},
+				spanExpectedAttributes: map[string]interface{}{
+					"account.id":       "007",
+					"http.status_code": 200,
+				},
+				spanInputEvents:    []string{"Update user preferences", "Cancelled wait due to external signal"},
+				spanExpectedEvents: []string{"Update user preferences", "Cancelled wait due to external signal"},
+			},
+			config: &Config{
+				IgnoredEvents: []string{
+					//regex that match jwt token
+					`^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$`,
 				},
 			},
 		},
