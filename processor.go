@@ -30,7 +30,7 @@ func NewProofreader(ctx context.Context, config *Config, logger *zap.Logger, nex
 		config:           config,
 		logger:           logger,
 		next:             next,
-		ignoreAttributes: buildIgnoreAttributes(config.IgnoredAttributes),
+		ignoreAttributes: buildIgnoreAttributes(config.IgnoredAttributes.Attributes),
 	}
 }
 

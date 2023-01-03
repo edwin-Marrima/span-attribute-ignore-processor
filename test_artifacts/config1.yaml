@@ -1,3 +1,5 @@
 proofreader:
   ignored_attributes:
-    - token
+    include_resources: true
+    attributes:
+      - token

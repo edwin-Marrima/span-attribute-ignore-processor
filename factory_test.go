@@ -19,7 +19,11 @@ func TestFactoryType(t *testing.T) {
 func TestDefaultConfiguration(t *testing.T) {
 	factory := NewFactory()
 	defaultConfiguration := factory.CreateDefaultConfig()
-	expectedDefaultConfiguration := &Config{}
+	expectedDefaultConfiguration := &Config{
+		IgnoredAttributes: AttributesConfiguration{
+			IncludeResources: true,
+		},
+	}
 	assert.Equal(t, expectedDefaultConfiguration, defaultConfiguration)
 }
 

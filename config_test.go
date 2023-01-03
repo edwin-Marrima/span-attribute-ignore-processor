@@ -18,7 +18,10 @@ func TestLoadingConfig(t *testing.T) {
 		{
 			id: component.NewIDWithName(typeStr, ""),
 			expected: &Config{
-				IgnoredAttributes: []string{"token"},
+				IgnoredAttributes: AttributesConfiguration{
+					IncludeResources: true,
+					Attributes:       []string{"token"},
+				},
 			},
 		},
 	}
