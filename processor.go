@@ -74,7 +74,7 @@ func (proofr *proofreader) processTraces(ctx context.Context, traces ptrace.Trac
 		// span.SpanID()
 		// span.SetSpanID()
 		// span.SetTraceID()
-		//
+		// //
 		//When IncludeResources is false resources attributes are ignored
 		if proofr.config.IgnoredAttributes.IncludeResources {
 			resourceAttributes := rs.Resource().Attributes()
