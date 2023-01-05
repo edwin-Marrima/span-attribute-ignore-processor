@@ -39,7 +39,10 @@ func createTracesProcessor(
 
 	oCfg := cfg.(*Config)
 
-	proofreader := NewProofreader(ctx, oCfg, set.Logger, next)
+	proofreader, err := NewProofreader(ctx, oCfg, set.Logger, next)
+	if err != nil {
+		return nil, err
+	}
 	return processorhelper.NewTracesProcessor(
 		ctx,
 		set,

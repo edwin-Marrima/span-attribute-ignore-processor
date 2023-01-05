@@ -19,18 +19,25 @@ type testCase struct {
 	spanExpectedAttributes     map[string]interface{}
 	resourceInputAttributes    map[string]interface{}
 	resourceExpectedAttributes map[string]interface{}
+	spanInputEvents            []string
+	spanExpectedEvents         []string
 }
 
 func runIndividualTestCase(t *testing.T, tt testCase, tp processor.Traces) {
 	t.Run(tt.name, func(t *testing.T) {
-		td := generateTraceData(tt.name, tt.spanInputAttributes, tt.resourceInputAttributes)
+		td := generateTraceData(tt.name, tt.spanInputAttributes, tt.resourceInputAttributes, tt.spanInputEvents)
 		assert.NoError(t, tp.ConsumeTraces(context.Background(), td))
 		// Ensure that the modified `td` has the attributes sorted:
 		sortAttributes(td)
-		require.Equal(t, generateTraceData(tt.name, tt.spanExpectedAttributes, tt.resourceExpectedAttributes), td)
+		require.Equal(t, generateTraceData(tt.name, tt.spanExpectedAttributes, tt.resourceExpectedAttributes, tt.spanExpectedEvents), td)
 	})
 }
-func generateTraceData(spanName string, spanAttributes map[string]interface{}, resourceAttributes map[string]interface{}) ptrace.Traces {
+func generateTraceData(
+	spanName string,
+	spanAttributes map[string]interface{},
+	resourceAttributes map[string]interface{},
+	spanEvents []string,
+) ptrace.Traces {
 	td := ptrace.NewTraces()
 	rs := td.ResourceSpans().AppendEmpty()
 	if len(resourceAttributes) > 0 {
@@ -43,9 +50,12 @@ func generateTraceData(spanName string, spanAttributes map[string]interface{}, r
 	span.SetTraceID([16]byte{1, 2, 3, 4})
 
 	span.Attributes().FromRaw(spanAttributes)
-
 	span.Attributes().Sort()
 
+	for _, event := range spanEvents {
+		spanEvent := span.Events().AppendEmpty()
+		spanEvent.SetName(event)
+	}
 	return td
 }
 func sortAttributes(td ptrace.Traces) {
@@ -164,6 +174,65 @@ func TestIgnoreSpans(t *testing.T) {
 						"service.owner.hash",
 						"account.password",
 					},
+				},
+			},
+		},
+	}
+	for _, v := range testCases {
+		factory := NewFactory()
+		tp, err := factory.CreateTracesProcessor(context.Background(), processortest.NewNopCreateSettings(), v.config, consumertest.NewNop())
+		require.Nil(t, err)
+		require.NotNil(t, tp)
+		runIndividualTestCase(t, v.test, tp)
+	}
+}
+
+func TestSpanEventsDeletion(t *testing.T) {
+	testCases := []struct {
+		test   testCase
+		config *Config
+	}{
+		{
+			test: testCase{
+				name:        "Delete span events based on regular expression",
+				serviceName: "admin_service",
+				spanInputAttributes: map[string]interface{}{
+					"account.id":       "007",
+					"http.status_code": 200,
+				},
+				spanExpectedAttributes: map[string]interface{}{
+					"account.id":       "007",
+					"http.status_code": 200,
+				},
+				spanInputEvents:    []string{"Update user preferences", "Cache user token:eyJhbVCJ9.eyJzdWIiOiIxMjM0NTYlIi5MDIyfQ.SflK", "Cancelled wait due to external signal"},
+				spanExpectedEvents: []string{"Update user preferences", "Cancelled wait due to external signal"},
+			},
+			config: &Config{
+				IgnoredEvents: []string{
+					//regex that match jwt token
+					`([\w-]*\.[\w-]*\.[\w-]*$)`,
+				},
+			},
+		},
+		{
+			test: testCase{
+				name:        "Delete span events based on regular expression (ignore events when regex doesn't match)",
+				serviceName: "admin_service",
+				spanInputAttributes: map[string]interface{}{
+					"account.id":       "007",
+					"http.status_code": 200,
+				},
+				spanExpectedAttributes: map[string]interface{}{
+					"account.id":       "007",
+					"http.status_code": 200,
+				},
+				spanInputEvents:    []string{"Update user preferences", "Cancelled wait due to external signal"},
+				spanExpectedEvents: []string{"Update user preferences", "Cancelled wait due to external signal"},
+			},
+			config: &Config{
+				IgnoredEvents: []string{
+					//regex that match jwt token
+					`^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$`,
 				},
 			},
 		},
